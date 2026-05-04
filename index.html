@@ -1,0 +1,378 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Idle Election: The Shady Campaign</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            touch-action: manipulation;
+            user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Added smooth scrolling */
+            scroll-behavior: smooth;
+        }
+
+        .tap-effect {
+            transition: all 0.05s ease;
+        }
+
+        .floating-text {
+            position: absolute;
+            color: #4ade80;
+            font-weight: 900;
+            font-size: 1.5rem;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 50;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-700 p-4 text-center shadow-lg sticky top-0 z-50">
+        <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+            IDLE ELECTION: RACE TO POWER
+        </h1>
+        <p class="text-xs text-slate-400">Tap, buy upgrades, and "persuade" your way to victory.</p>
+    </header>
+
+    <!-- Main Content Container (Max width for large screens) -->
+    <main class="flex-1 w-full max-w-4xl mx-auto p-4 flex flex-col gap-6 pb-20">
+        
+        <!-- Scoreboard Panel -->
+        <section class="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 overflow-hidden">
+            <div class="flex justify-between items-center p-6">
+                <!-- Player -->
+                <div class="flex flex-col items-center w-1/3">
+                    <div class="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-blue-500 overflow-hidden mb-3 shadow-[0_0_15px_rgba(59,130,246,0.6)] bg-slate-700">
+                        <img src="73669.jpg" alt="You" class="w-full h-full object-cover">
+                    </div>
+                    <span class="text-blue-400 font-bold text-sm md:text-xl">YOU</span>
+                    <span id="player-votes" class="text-3xl md:text-4xl font-mono font-bold text-white">0</span>
+                    <span class="text-xs md:text-sm text-slate-400"><span id="player-vps">0</span> votes/sec</span>
+                </div>
+
+                <!-- VS Badge -->
+                <div class="flex flex-col items-center justify-center w-1/3">
+                    <div class="bg-gradient-to-br from-red-600 to-orange-500 text-white font-black text-2xl md:text-4xl px-4 py-2 rounded-lg transform -skew-x-12 shadow-lg mb-2">
+                        VS
+                    </div>
+                    <div id="status-message" class="text-sm text-center font-bold animate-pulse text-red-400">
+                        OPPONENT IS WINNING!
+                    </div>
+                </div>
+
+                <!-- Opponent -->
+                <div class="flex flex-col items-center w-1/3">
+                    <div class="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-red-500 overflow-hidden mb-3 shadow-[0_0_15px_rgba(239,68,68,0.6)] bg-slate-700">
+                        <img src="104786.jpg" alt="Opponent" class="w-full h-full object-cover">
+                    </div>
+                    <span class="text-red-400 font-bold text-sm md:text-xl">INCUMBENT</span>
+                    <span id="opponent-votes" class="text-3xl md:text-4xl font-mono font-bold text-white">10,000</span>
+                    <span class="text-xs md:text-sm text-slate-400"><span id="opponent-vps">50</span> votes/sec</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chart Section -->
+        <section class="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 p-4 h-64 md:h-80">
+            <canvas id="voteChart"></canvas>
+        </section>
+
+        <!-- Tapping Area -->
+        <section class="bg-slate-800/50 rounded-2xl border border-slate-700 p-8 flex flex-col items-center justify-center">
+            <button id="tap-btn" class="tap-effect outline-none w-56 h-56 md:w-72 md:h-72 rounded-full shadow-[0_10px_0_#1e40af,0_15px_35px_rgba(59,130,246,0.3)] active:shadow-[0_0px_0_#1e40af,0_0px_0px_rgba(59,130,246,0.3)] active:translate-y-[10px] border-4 border-blue-400 z-10 bg-gradient-to-b from-blue-500 to-blue-700 cursor-pointer flex flex-col justify-center items-center group">
+                <span class="text-6xl md:text-7xl mb-2 drop-shadow-lg transition-transform group-active:scale-95">🗳️</span>
+                <span class="text-3xl md:text-4xl font-black text-white drop-shadow-md tracking-wider">CAST VOTE</span>
+            </button>
+            
+            <div class="mt-8 text-center bg-slate-900 px-6 py-3 rounded-full border border-slate-700 shadow-inner">
+                <p class="text-slate-300 font-medium text-lg">Click power: <span id="click-power" class="text-blue-400 font-bold text-2xl">1</span> votes/tap</p>
+            </div>
+        </section>
+
+        <!-- Upgrades Section (Now a Grid!) -->
+        <section class="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 p-6">
+            <div class="border-b border-slate-700 pb-4 mb-4">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span>🛠️</span> "Strategic" Upgrades
+                </h2>
+                <p class="text-sm text-slate-400 mt-1">Buy influence to automatically generate votes over time.</p>
+            </div>
+            
+            <!-- Grid container for upgrades -->
+            <div id="upgrades-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Upgrades injected via JS -->
+            </div>
+        </section>
+
+    </main>
+
+<script>
+    // --- Game State ---
+    const state = {
+        playerVotes: 0,
+        playerVPS: 0, 
+        playerVPC: 1, 
+        opponentVotes: 15000,
+        opponentVPS: 25,
+        historyPlayer: Array(20).fill(0),
+        historyOpponent: Array(20).fill(15000),
+        labels: Array(20).fill('')
+    };
+
+    // --- Upgrades Data ---
+    const upgrades = [
+        { id: 'u1', name: 'Social Media Bots', cost: 50, vps: 2, vpc: 0, desc: 'Fake accounts spamming praise.', count: 0, icon: '🤖' },
+        { id: 'u2', name: 'Click Farm', cost: 250, vps: 0, vpc: 2, desc: 'A warehouse of phones tapping for you.', count: 0, icon: '📱' },
+        { id: 'u3', name: 'Gerrymandering', cost: 1000, vps: 15, vpc: 0, desc: 'Redraw lines to trap opponent votes.', count: 0, icon: '🗺️' },
+        { id: 'u4', name: 'Smear Campaign', cost: 5000, vps: 60, vpc: 0, desc: 'Spread vicious rumors on TV.', count: 0, icon: '📺' },
+        { id: 'u5', name: 'Ballot Stuffing', cost: 25000, vps: 200, vpc: 10, desc: 'Slip extra papers into the boxes.', count: 0, icon: '🗳️' },
+        { id: 'u6', name: 'Electronic "Glitch"', cost: 100000, vps: 1000, vpc: 0, desc: 'A bug that favors you magically.', count: 0, icon: '💻' },
+        { id: 'u7', name: 'Foreign Interference', cost: 500000, vps: 6000, vpc: 50, desc: 'Help from overseas friends.', count: 0, icon: '🌍' },
+        { id: 'u8', name: 'Deepfake Scandal', cost: 2000000, vps: 25000, vpc: 0, desc: 'Generate fake videos of your rival.', count: 0, icon: '🎭' },
+    ];
+
+    // --- DOM Elements ---
+    const dom = {
+        playerVotes: document.getElementById('player-votes'),
+        playerVPS: document.getElementById('player-vps'),
+        opponentVotes: document.getElementById('opponent-votes'),
+        opponentVPS: document.getElementById('opponent-vps'),
+        tapBtn: document.getElementById('tap-btn'),
+        clickPower: document.getElementById('click-power'),
+        upgradesContainer: document.getElementById('upgrades-container'),
+        statusMessage: document.getElementById('status-message')
+    };
+
+    // --- Utility Functions ---
+    function formatNumber(num) {
+        if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+        if (num >= 1e3) return (num / 1e3).toFixed(1) + 'k';
+        return Math.floor(num).toLocaleString();
+    }
+
+    function calculateCost(baseCost, count) {
+        return Math.floor(baseCost * Math.pow(1.15, count));
+    }
+
+    // --- Initialize Chart.js ---
+    const ctx = document.getElementById('voteChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: state.labels,
+            datasets: [
+                {
+                    label: 'You',
+                    data: state.historyPlayer,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Opponent',
+                    data: state.historyOpponent,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 0 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    display: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { size: 14 },
+                        callback: function(value) { return formatNumber(value); }
+                    }
+                }
+            }
+        }
+    });
+
+    // --- Core Logic ---
+
+    function updateUI() {
+        dom.playerVotes.innerText = formatNumber(state.playerVotes);
+        dom.playerVPS.innerText = formatNumber(state.playerVPS);
+        dom.opponentVotes.innerText = formatNumber(state.opponentVotes);
+        dom.opponentVPS.innerText = formatNumber(state.opponentVPS);
+        dom.clickPower.innerText = formatNumber(state.playerVPC);
+
+        // Status Message
+        if (state.playerVotes > state.opponentVotes) {
+            dom.statusMessage.innerText = "YOU ARE IN THE LEAD!";
+            dom.statusMessage.className = "text-sm text-center font-bold animate-pulse text-green-400";
+        } else {
+            dom.statusMessage.innerText = "OPPONENT IS WINNING!";
+            dom.statusMessage.className = "text-sm text-center font-bold animate-pulse text-red-400";
+        }
+
+        // Update Upgrade Buttons availability
+        upgrades.forEach(u => {
+            const btn = document.getElementById(`btn-${u.id}`);
+            const cost = calculateCost(u.cost, u.count);
+            if (btn) {
+                if (state.playerVotes >= cost) {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                    btn.classList.add('hover:bg-slate-600', 'active:scale-95');
+                    btn.disabled = false;
+                } else {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                    btn.classList.remove('hover:bg-slate-600', 'active:scale-95');
+                    btn.disabled = true;
+                }
+                document.getElementById(`cost-${u.id}`).innerText = formatNumber(cost);
+                document.getElementById(`count-${u.id}`).innerText = u.count;
+            }
+        });
+    }
+
+    function renderUpgrades() {
+        dom.upgradesContainer.innerHTML = '';
+        upgrades.forEach(u => {
+            const currentCost = calculateCost(u.cost, u.count);
+            
+            const item = document.createElement('div');
+            // Styled for a grid layout now
+            item.className = 'bg-slate-900 rounded-xl p-4 flex justify-between items-center border border-slate-600 shadow-md transition-colors relative overflow-hidden';
+            
+            let statsText = '';
+            if (u.vps > 0) statsText += `<span class="text-blue-400 text-sm font-bold">+${formatNumber(u.vps)} VPS</span> `;
+            if (u.vpc > 0) statsText += `<span class="text-green-400 text-sm font-bold">+${formatNumber(u.vpc)} Click</span>`;
+
+            item.innerHTML = `
+                <div class="flex items-center gap-4 flex-1 mr-4 z-10">
+                    <div class="text-4xl bg-slate-800 p-3 rounded-lg shadow-inner">${u.icon}</div>
+                    <div class="flex flex-col">
+                        <span class="font-bold text-slate-100 text-lg leading-tight">${u.name} <span class="bg-slate-800 border border-slate-600 text-slate-300 px-2 py-0.5 rounded-full text-xs ml-2 shadow-inner" id="count-${u.id}">${u.count}</span></span>
+                        <span class="text-slate-400 text-sm italic mt-1 line-clamp-1">${u.desc}</span>
+                        <div class="mt-2">${statsText}</div>
+                    </div>
+                </div>
+                <button id="btn-${u.id}" class="z-10 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold py-3 px-5 rounded-lg shadow-[0_5px_15px_rgba(59,130,246,0.3)] transition-all min-w-[100px] text-center" onclick="buyUpgrade('${u.id}')">
+                    <span class="block text-xs uppercase tracking-wider opacity-75 mb-1">Cost</span>
+                    <span id="cost-${u.id}" class="block text-lg">${formatNumber(currentCost)}</span>
+                </button>
+            `;
+            dom.upgradesContainer.appendChild(item);
+        });
+    }
+
+    function buyUpgrade(id) {
+        const upgrade = upgrades.find(u => u.id === id);
+        const cost = calculateCost(upgrade.cost, upgrade.count);
+
+        if (state.playerVotes >= cost) {
+            state.playerVotes -= cost;
+            upgrade.count++;
+            
+            state.playerVPS += upgrade.vps;
+            state.playerVPC += upgrade.vpc;
+            
+            updateUI();
+        }
+    }
+
+    function createFloatingText(x, y, amount) {
+        const el = document.createElement('div');
+        el.className = 'floating-text';
+        el.innerText = '+' + formatNumber(amount);
+        
+        const offsetX = (Math.random() - 0.5) * 80;
+        el.style.left = `calc(${x}px + ${offsetX}px)`;
+        el.style.top = `${y}px`;
+        
+        document.body.appendChild(el);
+        
+        setTimeout(() => {
+            el.remove();
+        }, 1000);
+    }
+
+    // --- Interaction ---
+    dom.tapBtn.addEventListener('pointerdown', (e) => {
+        state.playerVotes += state.playerVPC;
+        updateUI();
+        
+        const rect = dom.tapBtn.getBoundingClientRect();
+        let x, y;
+        
+        // Use pageX/pageY so it works correctly when scrolled down
+        if (e.pageX && e.pageY) {
+            x = e.pageX;
+            y = e.pageY - 40; 
+        } else {
+            x = rect.left + window.scrollX + rect.width / 2;
+            y = rect.top + window.scrollY + rect.height / 2;
+        }
+
+        createFloatingText(x, y, state.playerVPC);
+    });
+
+    // --- Game Loops ---
+    setInterval(() => {
+        state.playerVotes += state.playerVPS / 10;
+        state.opponentVotes += state.opponentVPS / 10;
+        
+        // Opponent slowly gains VPS
+        if (Math.random() < 0.05) {
+            state.opponentVPS += (state.opponentVPS * 0.001); 
+        }
+
+        updateUI();
+    }, 100);
+
+    setInterval(() => {
+        state.historyPlayer.push(Math.floor(state.playerVotes));
+        state.historyOpponent.push(Math.floor(state.opponentVotes));
+        
+        state.historyPlayer.shift();
+        state.historyOpponent.shift();
+
+        chart.update();
+    }, 1000);
+
+    // --- Initialization ---
+    renderUpgrades();
+    updateUI();
+
+</script>
+</body>
+</html>
+
+
+```
