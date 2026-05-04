@@ -1,2 +1,2 @@
 # Clicklection
-A fun friendly voting clicker game.
+An ai slop harmless fun friendly voting clicker game.
